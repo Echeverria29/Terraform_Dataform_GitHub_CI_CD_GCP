@@ -19,21 +19,3 @@ module "bigquery_tables" {
   depends_on = [module.bigquery_datasets]
 }
 
-# module "bigquery_views" {
-#   source     = "./modules/bigquery_view"
-#   for_each   = var.views_config
-#   project    = var.project
-#   dataset_id = each.key
-#   views      = each.value
-#   labels     = var.labels
-#   depends_on = [module.bigquery_datasets, module.bigquery_tables, module.dataplex_task_qa]
-# }
-
-module "bigquery_routines" {
-  source     = "./modules/bigquery_routine"
-  for_each   = var.routines_config
-  project    = var.project
-  dataset_id = each.key
-  sp_config  = each.value
-  depends_on = [module.bigquery_datasets]
-}
