@@ -42,44 +42,8 @@ variable "tables_config" {
           "expiration_ms" = 691200000
         }
       }
-    ],
-    "silver_retail" : [
-      {
-        "table_id" : "clientes",
-        "schema_file" : "bigquery/schemas/silver/clientes.json",
-        "time_partitioning" = {
-          "type"  = "DAY"
-          "field" = "fecha_registro"
-        }
-      }
     ]
   }
 }
 
-variable "views_config" {
-  type = map(list(object({
-    view_id = string
-    query_file = string
-  })))
-  default = {
-    "gold_retail" = [
-      {
-        "view_id" : "xxxxxxxxxxxxxxx",
-        "query_file" : "bigquery/views/xxxxxxxxxxxxxxxxxxx.sql"
-      }
-    ]
-  }
-}
 variable "default_table_expiration_days" { default = 0 }
-variable "routines_config" {
-  type = map(list(tuple([string, string, list(any)])))
-  default = {
-    "bronze_retail" : [
-      [
-        "sp_retail_clientes",
-        "bigquery/routines/sp_retail_clientes.sql",
-        []
-      ]
-    ]
-  }
-}
