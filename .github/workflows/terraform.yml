@@ -1,0 +1,137 @@
+name: "Terraform CI/CD - Medallion Architecture"
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+  pull_request:
+    branches:
+      - dev
+      - main
+
+jobs:
+  validate:
+    name: "Terraform Validate"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./IAC
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.5"
+
+      - name: Decode GCP Credentials
+        run: |
+          echo "${{ secrets.KEYGCP }}" | base64 -d > key.json
+
+      - name: Terraform Init & Validate
+        run: |
+          terraform init -upgrade
+          terraform validate
+        env:
+          GOOGLE_CREDENTIALS: key.json
+
+  plan:
+    name: "Terraform Plan"
+    needs: validate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./IAC
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.5"
+
+      - name: Decode GCP Credentials
+        run: |
+          echo "${{ secrets.KEYGCP }}" | base64 -d > key.json
+      
+      # =========================================================================
+      # ALTERNATIVA LOCAL (Comentada para referencia):
+      # Si quisieras usar un archivo .tfvars.json estático local (ignorado en .gitignore)
+      # en lugar de variables de GitHub, el comando sería:
+      #
+      # - name: Terraform Init & Plan (Local tfvars)
+      #   run: |
+      #     terraform init
+      #     terraform plan -var-file="environment/${{ vars.ENVIRONMENT }}/env.tfvars.json" -out=tfplan
+      #   env:
+      #     GOOGLE_CREDENTIALS: key.json
+      # =========================================================================
+
+      # MÉTODOS ACTUAL SEGURO: Genera el archivo .tfvars.json al vuelo usando las Variables de GitHub
+      # Esto evita exponer datos sensibles en el repositorio público manteniendo la compatibilidad con los -var-file
+      - name: Generate Secure tfvars file
+        run: |
+          cat << EOF > environment/${{ vars.ENVIRONMENT }}/env.tfvars.json
+          {
+            "labels": {
+              "provider": "${{ vars.PROVIDER }}"
+            },
+            "project": "${{ vars.GCP_PROJECT }}",
+            "region": "${{ vars.GCP_REGION }}",
+            "bucket_name": "${{ vars.BUCKET_NAME }}"
+          }
+          EOF
+
+      - name: Terraform Init & Plan
+        run: |
+          terraform init
+          terraform plan -var-file="environment/${{ vars.ENVIRONMENT }}/env.tfvars.json" -out=tfplan
+        env:
+          GOOGLE_CREDENTIALS: key.json
+        
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: IAC/tfplan
+          retention-days: 7
+
+  apply:
+    name: "Terraform Apply"
+    needs: plan
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./IAC
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.5"
+
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: IAC
+
+      - name: Decode GCP Credentials
+        run: |
+          echo "${{ secrets.KEYGCP }}" | base64 -d > key.json
+
+      - name: Terraform Init & Apply
+        run: |
+          terraform init
+          terraform apply tfplan
+        env:
+          GOOGLE_CREDENTIALS: key.json

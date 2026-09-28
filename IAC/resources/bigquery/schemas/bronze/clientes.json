@@ -1,0 +1,27 @@
+[
+  {
+    "name": "cliente_id",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "nombre",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "email",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "fecha_registro",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "load_timestamp_cl",
+    "type": "TIMESTAMP",
+    "mode": "NULLABLE"
+  }
+]
