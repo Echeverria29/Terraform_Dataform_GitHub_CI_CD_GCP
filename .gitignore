@@ -1,3 +1,18 @@
+# Ignorar carpeta temporal de Terraform y archivos de estado locales
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+**/.terraform/
+
+# Ignorar archivos con llaves o secretos
+*.json
+!environment/**/*.json
+# PERO permitir explícitamente el de desarrollo/portafolio
+!IAC/environment/dev/env.tfvars.json
+!IAC/resources/bigquery/schemas/bronze/clientes.json
+!IAC/resources/bigquery/schemas/silver/clientes.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
