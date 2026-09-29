@@ -1,0 +1,5 @@
+defaultProject: pub-sub-data-flow
+defaultLocation: us-central1
+defaultDataset: silver_retail
+defaultAssertionDataset: dataform_assertions
+dataformCoreVersion: 3.0.0

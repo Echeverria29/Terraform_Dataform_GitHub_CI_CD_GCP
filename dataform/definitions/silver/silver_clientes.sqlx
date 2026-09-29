@@ -1,0 +1,19 @@
+config {
+  type: "table",
+  schema: "silver_retail",
+  name: "clientes",
+  description: "Tabla de clientes procesada en la capa Silver",
+  assertions: {
+    uniqueKey: ["CLIENTE_ID"],
+    nonNull: ["CLIENTE_ID"]
+  }
+}
+
+SELECT
+  CLIENTE_ID,
+  UPPER(NOMBRE) AS NOMBRE,
+  LOWER(EMAIL) AS EMAIL,
+  PARSE_DATETIME('%Y-%m-%d %H:%M:%S', FECHA_REGISTRO) AS FECHA_REGISTRO,
+  CURRENT_TIMESTAMP() AS load_timestamp_cl
+FROM
+  ${ref("clientes")}
