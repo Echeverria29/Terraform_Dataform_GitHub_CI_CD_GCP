@@ -1,19 +1,42 @@
 config {
-  type: "table",
+  type: "incremental",
   schema: "silver_retail",
   name: "clientes",
-  description: "Tabla de clientes procesada en la capa Silver",
+  description: "Tabla de clientes procesada incrementalmente en la capa Silver",
+  uniqueKey: ["cliente_id"],
   assertions: {
-    uniqueKey: ["CLIENTE_ID"],
-    nonNull: ["CLIENTE_ID"]
+    uniqueKey: ["cliente_id"],
+    nonNull: ["cliente_id"]
   }
 }
 
 SELECT
-  CLIENTE_ID,
-  UPPER(NOMBRE) AS NOMBRE,
-  LOWER(EMAIL) AS EMAIL,
-  PARSE_DATETIME('%Y-%m-%d %H:%M:%S', FECHA_REGISTRO) AS FECHA_REGISTRO,
-  CURRENT_TIMESTAMP() AS load_timestamp_cl
+  CAST(CLIENTE_ID AS INT64) AS cliente_id,
+  UPPER(CAST(NOMBRE AS STRING)) AS nombre,
+  LOWER(CAST(EMAIL AS STRING)) AS email,
+  SAFE.PARSE_DATE('%Y-%m-%d', SUBSTR(CAST(FECHA_REGISTRO AS STRING), 1, 10)) AS fecha_registro,
+  load_timestamp_cl
 FROM
-  ${ref("clientes")}
+  ${ref("bronze_retail", "clientes")}
+
+${when(incremental(), `
+  WHERE load_timestamp_cl > (SELECT MAX(load_timestamp_cl) FROM ${self()})
+`)}
+
+/* 
+-- Opción alternativa: Carga Full (no incremental)
+SELECT
+  CAST(CLIENTE_ID AS INT64) AS cliente_id,
+  UPPER(CAST(NOMBRE AS STRING)) AS nombre,
+  LOWER(CAST(EMAIL AS STRING)) AS email,
+  SAFE.PARSE_DATE('%Y-%m-%d', SUBSTR(CAST(FECHA_REGISTRO AS STRING), 1, 10)) AS fecha_registro,
+  load_timestamp_cl
+FROM
+  ${ref("bronze_retail", "clientes")}
+WHERE
+  load_timestamp_cl = (
+    SELECT MAX(load_timestamp_cl)
+    FROM ${ref("bronze_retail", "clientes")}
+    WHERE load_timestamp_cl >= TIMESTAMP(DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY))
+  )
+*/
