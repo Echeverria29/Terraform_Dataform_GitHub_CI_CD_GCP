@@ -2,9 +2,15 @@ name: Dataform CI
 
 on:
   push:
-    branches: [ dev, main ]
+    branches: [ main, dev ]
+    paths:
+      - 'definitions/**'
+      - 'workflow_settings.yaml'
   pull_request:
-    branches: [ dev, main ]
+    branches: [ main, dev ]
+    paths:
+      - 'definitions/**'
+      - 'workflow_settings.yaml'
 
 jobs:
   compile:
