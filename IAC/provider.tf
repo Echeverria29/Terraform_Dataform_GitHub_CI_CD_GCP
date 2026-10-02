@@ -1,4 +1,8 @@
 terraform {
+  backend "gcs" {
+    bucket = "dataflow-staging-us-east1-761179275057"
+    prefix = "terraform/state/dev"
+  }
   required_providers {
     google = {
       source  = "hashicorp/google"
