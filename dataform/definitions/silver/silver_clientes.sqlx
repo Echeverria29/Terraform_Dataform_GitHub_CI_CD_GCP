@@ -12,23 +12,38 @@ config {
 
 SELECT
   CAST(CLIENTE_ID AS INT64) AS cliente_id,
-  UPPER(CAST(NOMBRE AS STRING)) AS nombre,
-  LOWER(CAST(EMAIL AS STRING)) AS email,
+  CAST(NOMBRE AS STRING) AS nombre,
+  CAST(EMAIL AS STRING) AS email,
   SAFE.PARSE_DATE('%Y-%m-%d', SUBSTR(CAST(FECHA_REGISTRO AS STRING), 1, 10)) AS fecha_registro,
   load_timestamp_cl
 FROM
   ${ref("bronze_retail", "clientes")}
 
 ${when(incremental(), `
-  WHERE load_timestamp_cl > (SELECT MAX(load_timestamp_cl) FROM ${self()})
+  WHERE load_timestamp_cl = (
+    SELECT MAX(load_timestamp_cl)
+    FROM ${ref("bronze_retail", "clientes")}
+    WHERE load_timestamp_cl >= TIMESTAMP(DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY))
+  )
 `)}
 
+----------------- NO INCREMENTAL (FULL REFRESH) -----------------
 /* 
--- Opción alternativa: Carga Full (no incremental)
+  config {
+  type: "table",
+  schema: "silver_retail",
+  name: "clientes",
+  description: "Tabla de clientes con recarga completa (Full Refresh) en la capa Silver",
+  assertions: {
+    uniqueKey: ["cliente_id"],
+    nonNull: ["cliente_id"]
+  }
+}
+
 SELECT
   CAST(CLIENTE_ID AS INT64) AS cliente_id,
-  UPPER(CAST(NOMBRE AS STRING)) AS nombre,
-  LOWER(CAST(EMAIL AS STRING)) AS email,
+  CAST(NOMBRE AS STRING) AS nombre,
+  CAST(EMAIL AS STRING) AS email,
   SAFE.PARSE_DATE('%Y-%m-%d', SUBSTR(CAST(FECHA_REGISTRO AS STRING), 1, 10)) AS fecha_registro,
   load_timestamp_cl
 FROM
