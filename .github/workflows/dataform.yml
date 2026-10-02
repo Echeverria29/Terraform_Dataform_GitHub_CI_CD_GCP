@@ -3,19 +3,17 @@ name: Dataform CI
 on:
   push:
     paths:
-      - 'dataform/**'
+      - 'definitions/**'
+      - 'workflow_settings.yaml'
   pull_request:
     paths:
-      - 'dataform/**'
+      - 'definitions/**'
+      - 'workflow_settings.yaml'
 
 jobs:
   compile:
     name: Compile Dataform Code
     runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: ./dataform
 
     steps:
       - name: Checkout Code
