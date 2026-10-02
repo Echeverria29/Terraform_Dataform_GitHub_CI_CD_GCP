@@ -192,6 +192,18 @@ Si en algún momento prefieres que el pipeline de GitHub Actions ignore las vari
           GOOGLE_CREDENTIALS: key.json
 ```
 
+## 🔄 Despliegue de prueba local (Guardar estado del despliegue terraform)
+
+Si necesitas realizar pruebas en tu máquina local y no deseas usar el backend remoto en Google Cloud Storage:
+Elimina o comenta el siguiente bloque de código en provider.tf. Esto hará que Terraform guarde el estado localmente (terraform.tfstate):
+
+```bash
+      backend "gcs" {
+        bucket = "dataflow-staging-us-east1-761179275057"
+        prefix = "terraform/state/dev"
+      }
+```
+
 ## 🔄 Conexión con GCP Dataform Console
 
 Para programar la ejecución en producción de tus transformaciones analíticas:
