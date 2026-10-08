@@ -1,12 +1,48 @@
-```
-🚀 Modern Data Platform en GCP: Terraform + Dataform + GitOps CI/CD
-```
+# 🚀 Modern Data Platform en GCP: Terraform + Dataform + GitOps CI/CD
+
+![Google Cloud](https://img.shields.io/badge/Google_Cloud-4285F4?style=for-the-badge&logo=google-cloud&logoColor=white)
+![Terraform](https://img.shields.io/badge/Terraform-7B42BC?style=for-the-badge&logo=terraform&logoColor=white)
+![Dataform](https://img.shields.io/badge/Dataform-000000?style=for-the-badge&logo=dataform&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=github-actions&logoColor=white)
+![BigQuery](https://img.shields.io/badge/BigQuery-669DF6?style=for-the-badge&logo=googlebigquery&logoColor=white)
 
 Este repositorio implementa una plataforma de datos moderna en Google Cloud Platform (GCP) basada en la Arquitectura Medallion (Bronze, Silver, Gold). Utiliza un enfoque GitOps desacoplando la gestión de infraestructura base vía Terraform del modelado y transformación analítica vía Dataform.
 
-## 🏗️️ Arquitectura y Flujo GitOps
+## 📑 Tabla de Contenidos
 
-### 1. Separación de Responsabilidades
+* [🏛️ Arquitectura y Flujo GitOps](#️-arquitectura-y-flujo-gitops)
+
+  * [1. Separación de Responsabilidades](#1-separación-de-responsabilidades)
+
+  * [2. Flujo de Integración Continua (CI/CD)](#2-flujo-de-integración-continua-cicd)
+
+* [📂 Estructura del Monorepo](#-estructura-del-monorepo)
+
+* [🔑 Configuración de Secretos en GitHub](#-configuración-de-secretos-en-github)
+
+* [🛠️ Requisitos e Instalación Local (Para Pruebas y Desarrollo)](#️-requisitos-e-instalación-local-para-pruebas-y-desarrollo)
+
+  * [1. Instalar Google Cloud CLI (`gcloud`)](#1-instalar-google-cloud-cli-gcloud)
+
+  * [2. Instalar Terraform](#2-instalar-terraform)
+
+  * [3. Instalar Node.js, npm y Dataform CLI](#3-instalar-nodejs-npm-y-dataform-cli)
+
+* [⚙️ Modelos de Ejecución: Local vs. GitHub Actions](#️-modelos-de-ejecución-local-vs-github-actions)
+
+  * [Opción A: Pruebas Locales (Llenando el archivo `env.tfvars.json`)](#opción-a-pruebas-locales-llenando-el-archivo-envtfvarsjson)
+
+  * [Opción B: Producción / CI-CD por defecto (Usando Variables de GitHub Actions)](#opción-b-producción--ci-cd-por-defecto-usando-variables-de-github-actions)
+
+* [🔄 Alternativa en `terraform.yml`](#-alternativa-en-terraformyml-si-quisieras-probar-el-despliegue-automático-usando-tu-archivo-local-estático)
+
+* [🔄 Despliegue de prueba local (Guardar estado del despliegue terraform)](#-despliegue-de-prueba-local-guardar-estado-del-despliegue-terraform)
+
+* [🔄 Conexión con GCP Dataform Console](#-conexión-con-gcp-dataform-console)
+
+## 🏛️ Arquitectura y Flujo GitOps
+
+### 1. Separación de Respo
 
 * **Terraform (Infraestructura IaaS):** Provisiona la estructura base en GCP: Datasets de BigQuery (`bronze_retail`, `silver_retail`, `gold_retail`), Buckets de GCS, Service Accounts y esquemas raw iniciales.
 
@@ -14,16 +50,16 @@ Este repositorio implementa una plataforma de datos moderna en Google Cloud Plat
 
 ```
 graph TD
-    subgraph Terraform [Infraestructura]
-        A[(bronze_retail)]
-        B[(silver_retail)]
-        C[(gold_retail)]
-    end
+subgraph Terraform [Infraestructura]
+A[(bronze_retail)]
+B[(silver_retail)]
+C[(gold_retail)]
+end
 
-    subgraph Dataform [Transformaciones SQLX]
-        A -->|Modelos Incrementales| B
-        B -->|Agregaciones BI| C
-    end
+subgraph Dataform [Transformaciones SQLX]
+A -->|Modelos Incrementales| B
+B -->|Agregaciones BI| C
+end
 
 ```
 
@@ -31,19 +67,17 @@ graph TD
 
 ```
 graph TD
-    Dev[Developer Push / PR] --> Actions[GitHub Actions CI]
-    
-    Actions -->|terraform.yml| TF[Terraform Validate & Plan]
-    Actions -->|dataform.yml| DF[Dataform Compile Check]
-    
-    TF -->|Push a Main| Apply[Terraform Apply - GCP]
-    DF -->|Push a Main| GCPDF[GCP Dataform Service - Execution]
+Dev[Developer Push / PR] --> Actions[GitHub Actions CI]
+Actions -->|terraform.yml| TF[Terraform Validate & Plan]
+Actions -->|dataform.yml| DF[Dataform Compile Check]
+TF -->|Push a Main| Apply[Terraform Apply - GCP]
+DF -->|Push a Main| GCPDF[GCP Dataform Service - Execution]
 
 ```
 
-* **`terraform.yml`:** Ejecuta `validate` y `plan` en ramas secundarias/PRs, y aplica los cambios (`apply`) únicamente en la rama `main`.
+* **`terraform.yml`**: Ejecuta `validate` y `plan` en ramas secundarias/PRs, y aplica los cambios (`apply`) únicamente en la rama `main`.
 
-* **`dataform.yml`:** Instala el CLI de Dataform y valida en memoria la sintaxis de los modelos `.sqlx` y sus dependencias (`dataform compile`).
+* **`dataform.yml`**: Instala el CLI de Dataform y valida en memoria la sintaxis de los modelos `.sqlx` y sus dependencias (`dataform compile`).
 
 ## 📂 Estructura del Monorepo
 
@@ -51,24 +85,24 @@ graph TD
 .
 ├── .github/
 │   └── workflows/
-│       ├── dataform.yml            # Pipeline CI: Validación y compilación SQLX
-│       └── terraform.yml           # Pipeline CI/CD: Validación y despliegue de Infraestructura
+│       ├── dataform.yml       # Pipeline CI: Validación y compilación SQLX
+│       └── terraform.yml      # Pipeline CI/CD: Validación y despliegue de Infraestructura
 ├── dataform/
 │   ├── definitions/
-│   │   ├── bronze/                 # Declaraciones de tablas base / fuentes
-│   │   └── silver/                 # Transformaciones incrementales (.sqlx)
-│   └── workflow_settings.yaml      # Configuración de entornos y compilación en GCP/Local
+│   │   ├── bronze/            # Declaraciones de tablas base / fuentes
+│   │   └── silver/            # Transformaciones incrementales (.sqlx)
+│   └── workflow_settings.yaml # Configuración de entornos y compilación en GCP/Local
 ├── IAC/
 │   ├── environment/
 │   │   └── dev/
-│   │       └── env.tfvars.json     # Variables locales de entorno (¡Debes llenarlo para pruebas locales!)
+│   │       └── env.tfvars.json # Variables locales de entorno (¡Debes llenarlo para pruebas locales!)
 │   ├── modules/
-│   │   ├── bigquery_dataset/       # Módulo para creación de datasets (Bronze, Silver, Gold)
-│   │   └── bigquery_table/         # Módulo para tablas base
-│   ├── main.tf                     # Orquestador principal de Terraform
-│   ├── provider.tf                 # Configuración de proveedores GCP
-│   ├── variables.tf                # Variables globales
-│   └── outputs.tf                  # Salidas del despliegue
+│   │   ├── bigquery_dataset/  # Módulo para creación de datasets (Bronze, Silver, Gold)
+│   │   └── bigquery_table/    # Módulo para tablas base
+│   ├── main.tf                # Orquestador principal de Terraform
+│   ├── provider.tf            # Configuración de proveedores GCP
+│   ├── variables.tf           # Variables globales
+│   └── outputs.tf             # Salidas del despliegue
 ├── LICENSE.md
 └── README.md
 
@@ -78,23 +112,25 @@ graph TD
 
 Para autorizar a GitHub Actions a interactuar con GCP de forma segura, debes configurar los siguientes parámetros en tu repositorio (**Settings -> Secrets and variables -> Actions**):
 
-* **Service Account Key (Secret):**
+### Service Account Key (Secret)
 
-  * **Nombre:** `KEYGCP`
+* **Nombre:** `KEYGCP`
 
-  * **Valor:** El contenido de tu archivo JSON de credenciales de GCP codificado en Base64.
+* **Valor:** El contenido de tu archivo JSON de credenciales de GCP codificado en Base64.
 
-  * **Comandos para codificar:**
+* **Comando para codificar:**
 
-    * **Linux / WSL:** `base64 -w 0 key.json`
+  * **Linux / WSL:** `base64 -w 0 key.json`
 
-    * **macOS:** `base64 -i key.json | tr -d '\n'`
+  * **macOS:** `base64 -i key.json | tr -d '\n'`
 
-    * **PowerShell:** `[Convert]::ToBase64String([IO.File]::ReadAllBytes("key.json"))`
+  * **PowerShell:** `[Convert]::ToBase64String([IO.File]::ReadAllBytes("key.json"))`
 
-* **Variables de Repositorio (Variables - Opcional si usas el método por defecto con GitHub Variables):**
+### Variables de Repositorio (Variables)
 
-  * `GCP_PROJECT`, `GCP_REGION`, `BUCKET_NAME`, `ENVIRONMENT`, `PROVIDER`.
+*(Opcional si usas el método por defecto con GitHub Variables)*
+
+`GCP_PROJECT`, `GCP_REGION`, `BUCKET_NAME`, `ENVIRONMENT`, `PROVIDER`.
 
 ## 🛠️ Requisitos e Instalación Local (Para Pruebas y Desarrollo)
 
@@ -174,53 +210,56 @@ Por defecto, el archivo `terraform.yml` está configurado para no requerir archi
 Así es como debe lucir el bloque principal por defecto en tu archivo `terraform.yml`:
 
 ```
-      # MÉTODO POR DEFECTO EN GITHUB ACTIONS: Genera el archivo .tfvars.json al vuelo 
-      # usando las Variables de GitHub para evitar exponer datos sensibles en el repositorio público.
-      - name: Generate Secure tfvars file
-        run: |
-          cat << EOF > environment/${{ vars.ENVIRONMENT }}/env.tfvars.json
-          {
-            "labels": {
-              "provider": "${{ vars.PROVIDER }}"
-            },
-            "project": "${{ vars.GCP_PROJECT }}",
-            "region": "${{ vars.GCP_REGION }}",
-            "bucket_name": "${{ vars.BUCKET_NAME }}"
-          }
-          EOF
-      - name: Terraform Init & Plan
-        run: |
-          terraform init
-          terraform plan -var-file="environment/${{ vars.ENVIRONMENT }}/env.tfvars.json" -out=tfplan
-        env:
-          GOOGLE_CREDENTIALS: key.json
+# MÉTODO POR DEFECTO EN GITHUB ACTIONS: Genera el archivo .tfvars.json al vuelo
+# usando las Variables de GitHub para evitar exponer datos sensibles en el repositorio público.
+- name: Generate Secure tfvars file
+  run: |
+    cat << EOF > environment/${{ vars.ENVIRONMENT }}/env.tfvars.json
+    {
+      "labels": {
+        "provider": "${{ vars.PROVIDER }}"
+      },
+      "project": "${{ vars.GCP_PROJECT }}",
+      "region": "${{ vars.GCP_REGION }}",
+      "bucket_name": "${{ vars.BUCKET_NAME }}"
+    }
+    EOF
+
+- name: Terraform Init & Plan
+  run: |
+    terraform init
+    terraform plan -var-file="environment/${{ vars.ENVIRONMENT }}/env.tfvars.json" -out=tfplan
+  env:
+    GOOGLE_CREDENTIALS: key.json
 
 ```
 
-### 🔄 Alternativa en `terraform.yml` (Si quisieras probar el despliegue automático usando tu archivo local estático)
+## 🔄 Alternativa en `terraform.yml` (Si quisieras probar el despliegue automático usando tu archivo local estático)
 
 Si en algún momento prefieres que el pipeline de GitHub Actions ignore las variables de la plataforma y lea directamente tu archivo físico `env.tfvars.json` guardado en el repositorio (cuidando de no subir secretos duros), puedes reemplazar el bloque anterior por este:
 
 ```
-      # ALTERNATIVA LOCAL (Para referencia / Comentado si prefieres usar el archivo estático del repo):
-      - name: Terraform Init & Plan (Local tfvars)
-        run: |
-          terraform init
-          terraform plan -var-file="environment/${{ vars.ENVIRONMENT }}/env.tfvars.json" -out=tfplan
-        env:
-          GOOGLE_CREDENTIALS: key.json
+# ALTERNATIVA LOCAL (Para referencia / Comentado si prefieres usar el archivo estático del repo):
+- name: Terraform Init & Plan (Local tfvars)
+  run: |
+    terraform init
+    terraform plan -var-file="environment/${{ vars.ENVIRONMENT }}/env.tfvars.json" -out=tfplan
+  env:
+    GOOGLE_CREDENTIALS: key.json
 
 ```
 
-### 🔄 Despliegue de prueba local (Guardar estado del despliegue terraform)
+## 🔄 Despliegue de prueba local (Guardar estado del despliegue terraform)
 
-Si necesitas realizar pruebas en tu máquina local y no deseas usar el backend remoto en Google Cloud Storage, elimina o comenta el siguiente bloque de código en `provider.tf`. Esto hará que Terraform guarde el estado localmente (`terraform.tfstate`):
+Si necesitas realizar pruebas en tu máquina local y no deseas usar el backend remoto en Google Cloud Storage:
+
+Elimina o comenta el siguiente bloque de código en `provider.tf`. Esto hará que Terraform guarde el estado localmente (`terraform.tfstate`):
 
 ```
-      backend "gcs" {
-        bucket = "dataflow-staging-us-east1-761179275057"
-        prefix = "terraform/state/dev"
-      }
+backend "gcs" {
+  bucket = "dataflow-staging-us-east1-761179275057"
+  prefix = "terraform/state/dev"
+}
 
 ```
 
@@ -237,41 +276,3 @@ Para programar la ejecución en producción de tus transformaciones analíticas:
 4. Crea una **Release Configuration** vinculada a la rama `main`.
 
 5. Define una **Workflow Configuration** estableciendo la periodicidad de ejecución (Cron) para correr los modelos incrementales y sus validaciones de calidad.
-
-## 🔐 Configuración de Permisos IAM y Ejecución en Dataform Console
-
-Para garantizar que Dataform compile los grafos, ejecute los modelos incrementales SQLX y cree el dataset automático `dataform_assertions` sin errores de permisos (`403 Access Denied` o `BigQuery Job User missing`), es imprescindible configurar los roles IAM correctos.
-
-### 1. Cuentas de Servicio Involucradas
-
-* **Service Agent por Defecto de Dataform:**
-  Creado automáticamente por GCP al habilitar la API de Dataform.
-
-  *Formato:* `service-PROJECT_NUMBER@gcp-sa-dataform.iam.gserviceaccount.com`
-
-* **Service Account Personalizada (Ejecución/Workflows):**
-  Cuenta de servicio dedicada para la ejecución de pipelines de datos (ejemplo: `pub-sub-data-flow@...`).
-
-### 2. Roles IAM Requeridos
-
-Ambas cuentas de servicio deben contar con los siguientes roles asignados en IAM a nivel de proyecto:
-
-* 🔹 **BigQuery Data Editor** (`roles/bigquery.dataEditor`): Permite la creación y actualización de tablas en los datasets `bronze_retail`, `silver_retail`, `gold_retail` y la creación implícita del dataset `dataform_assertions`.
-
-* 🔹 **BigQuery Job User** (`roles/bigquery.jobUser`): Permite ejecutar jobs de consulta y transformación SQL dentro de BigQuery.
-
-* 🔹 **Secret Manager Secret Accessor** (`roles/secretmanager.secretAccessor`): Permite a Dataform leer los tokens de autenticación (PAT) almacenados en GCP Secret Manager para conectarse al repositorio remoto de GitHub.
-
-* 🔹 **Service Account Token Creator** (`roles/iam.serviceAccountTokenCreator`): Permite realizar la suplantación de identidad (*impersonation*) de la Service Account asignada durante la ejecución de los flujos.
-
-### 3. Ejecución Manual y Selección de Service Account
-
-Al iniciar una ejecución desde la interfaz de Dataform (**Development Workspaces -> Start execution**):
-
-1. Selecciona la opción **Execute with selected service account**.
-
-2. Elige en la lista desplegable la Service Account autorizada (`pub-sub-data-flow@...`).
-
-3. Haz clic en **Start execution**.
-
-Esto garantiza que las transformaciones se ejecuten bajo la identidad y los permisos adecuados, asegurando la trazabilidad y la correcta generación de los esquemas en BigQuery.

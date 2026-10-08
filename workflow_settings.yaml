@@ -1,4 +1,4 @@
-defaultProject: pub-sub-data-flow
+defaultProject: ci-cd-dataform-gh-actions
 defaultLocation: us-central1
 defaultDataset: silver_retail
 defaultAssertionDataset: dataform_assertions
