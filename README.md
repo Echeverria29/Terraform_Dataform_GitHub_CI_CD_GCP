@@ -1,4 +1,4 @@
-# 🚀 Modern Data Platform en GCP: Terraform + Dataform + GitOps CI/CD
+# 🚀 Modern Data Platform en GCP con Medallion Architecture, Terraform y Dataform
 
 ![Google Cloud](https://img.shields.io/badge/Google_Cloud-4285F4?style=for-the-badge&logo=google-cloud&logoColor=white)
 ![Terraform](https://img.shields.io/badge/Terraform-7B42BC?style=for-the-badge&logo=terraform&logoColor=white)
@@ -6,224 +6,214 @@
 ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=github-actions&logoColor=white)
 ![BigQuery](https://img.shields.io/badge/BigQuery-669DF6?style=for-the-badge&logo=googlebigquery&logoColor=white)
 
-Este repositorio implementa una plataforma de datos moderna en Google Cloud Platform (GCP) basada en la Arquitectura Medallion (Bronze, Silver, Gold). Utiliza un enfoque GitOps desacoplando la gestión de infraestructura base vía Terraform del modelado y transformación analítica vía Dataform.
+Repositorio de Infraestructura como Código (IaC) enfocado en la implementación automatizada de una plataforma de datos moderna en Google Cloud Platform (GCP). El proyecto implementa una **Arquitectura Medallion** en BigQuery, transformaciones automatizadas con **Dataform** y permite un despliegue dual: mediante **CI/CD con GitHub Actions** o de **forma local manual**.
 
 ## 📑 Tabla de Contenidos
 
-* [🏛️ Arquitectura y Flujo GitOps](#️-arquitectura-y-flujo-gitops)
-
-  * [1. Separación de Responsabilidades](#1-separación-de-responsabilidades)
-
-  * [2. Flujo de Integración Continua (CI/CD)](#2-flujo-de-integración-continua-cicd)
-
+* [🏛️ Diagramas de Arquitectura](#️-diagramas-de-arquitectura)
+  * [1. Arquitectura de Datos (Medallion Architecture + Dataform)](#1-arquitectura-de-datos-medallion-architecture--dataform)
+  * [2. Arquitectura de Despliegue e Infraestructura](#2-arquitectura-de-despliegue-e-infraestructura)
 * [📂 Estructura del Monorepo](#-estructura-del-monorepo)
+* [🔑 Configuración de IAM, Service Account y Llaves JSON](#-configuración-de-iam-service-account-y-llaves-json)
+  * [1. Creación de la Service Account de Despliegue](#1-creación-de-la-service-account-de-despliegue)
+  * [2. Asignación de Roles y Permisos (Detalle Técnico)](#2-asignación-de-roles-y-permisos-detalle-técnico)
+  * [3. Gestión y Descarga de la Llave JSON (Manage Keys)](#3-gestión-y-descarga-de-la-llave-json-manage-keys)
+* [🔐 Configuración de Secretos en GitHub y GCP Secret Manager](#-configuración-de-secretos-en-github-y-gcp-secret-manager)
+  * [1. Habilitar y Configurar Secret Manager](#1-habilitar-y-configurar-secret-manager)
+  * [2. Configuración e Identidad de Dataform](#2-configuración-e-identidad-de-dataform)
+  * [3. Codificación Base64 para GitHub Secrets](#3-codificación-base64-para-github-secrets)
+* [⚙️ Modos de Ejecución: Con CI/CD vs. Sin CI/CD](#️-modos-de-ejecución-con-cicd-vs-sin-cicd)
+  * [Opción A: Con CI/CD (GitHub Actions) - Modo por Defecto](#opción-a-con-cicd-github-actions---modo-por-defecto)
+  * [Opción B: Sin CI/CD (Pruebas Directas Locales)](#opción-b-sin-cicd-pruebas-directas-locales)
+* [🛠️ Requisitos e Instalación Local (Ubuntu / WSL)](#️-requisitos-e-instalación-local-ubuntu--wsl)
 
-* [🔑 Configuración de Secretos en GitHub](#-configuración-de-secretos-en-github)
+---
 
-* [🛠️ Requisitos e Instalación Local (Para Pruebas y Desarrollo)](#️-requisitos-e-instalación-local-para-pruebas-y-desarrollo)
+## 🏛️ Diagramas de Arquitectura
 
-  * [1. Instalar Google Cloud CLI (`gcloud`)](#1-instalar-google-cloud-cli-gcloud)
+El repositorio cuenta con dos perspectivas arquitectónicas clave:
 
-  * [2. Instalar Terraform](#2-instalar-terraform)
+### 1. Arquitectura de Datos (Medallion Architecture + Dataform)
 
-  * [3. Instalar Node.js, npm y Dataform CLI](#3-instalar-nodejs-npm-y-dataform-cli)
+El flujo organiza el almacenamiento analítico y el procesamiento modular con Dataform en capas desacopladas:
 
-* [⚙️ Modelos de Ejecución: Local vs. GitHub Actions](#️-modelos-de-ejecución-local-vs-github-actions)
+* **Capa Bronze (`bronze_retail`):** Ingesta cruda de datos transaccionales, tablas particionadas y esquemas versionados mediante JSON.
+* **Capa Silver (`silver_retail`):** Limpieza, deduplicación y estandarización orquestada con **Dataform** / Procedimientos Almacenados.
+* **Capa Gold (`gold_retail`):** Vistas analíticas y datamarts de negocio listos para consumo BI.
 
-  * [Opción A: Pruebas Locales (Llenando el archivo `env.tfvars.json`)](#opción-a-pruebas-locales-llenando-el-archivo-envtfvarsjson)
-
-  * [Opción B: Producción / CI-CD por defecto (Usando Variables de GitHub Actions)](#opción-b-producción--ci-cd-por-defecto-usando-variables-de-github-actions)
-
-* [🔄 Alternativa en `terraform.yml`](#-alternativa-en-terraformyml-si-quisieras-probar-el-despliegue-automático-usando-tu-archivo-local-estático)
-
-* [🔄 Despliegue de prueba local (Guardar estado del despliegue terraform)](#-despliegue-de-prueba-local-guardar-estado-del-despliegue-terraform)
-
-* [🔄 Conexión con GCP Dataform Console](#-conexión-con-gcp-dataform-console)
-
-## 🏛️ Arquitectura y Flujo GitOps
-
-### 1. Separación de Respo
-
-* **Terraform (Infraestructura IaaS):** Provisiona la estructura base en GCP: Datasets de BigQuery (`bronze_retail`, `silver_retail`, `gold_retail`), Buckets de GCS, Service Accounts y esquemas raw iniciales.
-
-* **Dataform (Transformaciones / Data Engineering):** Administra el ciclo de vida de las tablas analíticas dentro de BigQuery. Realiza la limpieza, estandarización, cargas incrementales y pruebas de calidad de datos (`assertions`).
-
-```
+```mermaid
 graph TD
-subgraph Terraform [Infraestructura]
-A[(bronze_retail)]
-B[(silver_retail)]
-C[(gold_retail)]
-end
-
-subgraph Dataform [Transformaciones SQLX]
-A -->|Modelos Incrementales| B
-B -->|Agregaciones BI| C
-end
-
+    A[Ingesta / Fuentes Ext] -->|Datos Crudos| B[Bronze: bronze_retail]
+    B -->|Dataform Pipeline & SPs| C[Silver: silver_retail]
+    C -->|Modelado & Vistas Analíticas| D[Gold: gold_retail]
+    E[Dataform Workflows] -.->|Orquestación SQLX| B
+    E -.->|Transformaciones| C
+    E -.->|Publicación| D
 ```
 
-### 2. Flujo de Integración Continua (CI/CD)
+### 2. Arquitectura de Despliegue e Infraestructura
 
-```
+Estructura modular con Terraform y la integración de Secret Manager y Dataform en GCP:
+
+```mermaid
 graph TD
-Dev[Developer Push / PR] --> Actions[GitHub Actions CI]
-Actions -->|terraform.yml| TF[Terraform Validate & Plan]
-Actions -->|dataform.yml| DF[Dataform Compile Check]
-TF -->|Push a Main| Apply[Terraform Apply - GCP]
-DF -->|Push a Main| GCPDF[GCP Dataform Service - Execution]
+    A[Terraform Root] --> B[Module: BigQuery Dataset]
+    A --> C[Module: BigQuery Table & Schemas]
+    A --> D[Module: BigQuery Routines / SP]
+    A --> E[Module: BigQuery Views]
+    A --> F[Module: Secret Manager & IAM]
+    A --> G[Module: Dataform Repository]
 
+    B --> H[Capas Medallion: Bronze / Silver / Gold]
+    C --> D
+    C --> E
+    F -->|Acceso a Secretos| G
+    G -->|Ejecución de Pipelines| H
 ```
 
-* **`terraform.yml`**: Ejecuta `validate` y `plan` en ramas secundarias/PRs, y aplica los cambios (`apply`) únicamente en la rama `main`.
-
-* **`dataform.yml`**: Instala el CLI de Dataform y valida en memoria la sintaxis de los modelos `.sqlx` y sus dependencias (`dataform compile`).
+---
 
 ## 📂 Estructura del Monorepo
 
-```
+```plaintext
 .
 ├── .github/
 │   └── workflows/
-│       ├── dataform.yml       # Pipeline CI: Validación y compilación SQLX
-│       └── terraform.yml      # Pipeline CI/CD: Validación y despliegue de Infraestructura
-├── dataform/
-│   ├── definitions/
-│   │   ├── bronze/            # Declaraciones de tablas base / fuentes
-│   │   └── silver/            # Transformaciones incrementales (.sqlx)
-│   └── workflow_settings.yaml # Configuración de entornos y compilación en GCP/Local
+│       └── terraform.yml            # Pipeline CI/CD de GitHub Actions
 ├── IAC/
 │   ├── environment/
 │   │   └── dev/
-│   │       └── env.tfvars.json # Variables locales de entorno (¡Debes llenarlo para pruebas locales!)
+│   │       └── env.tfvars.json      # Configuración de variables locales
 │   ├── modules/
-│   │   ├── bigquery_dataset/  # Módulo para creación de datasets (Bronze, Silver, Gold)
-│   │   └── bigquery_table/    # Módulo para tablas base
-│   ├── main.tf                # Orquestador principal de Terraform
-│   ├── provider.tf            # Configuración de proveedores GCP
-│   ├── variables.tf           # Variables globales
-│   └── outputs.tf             # Salidas del despliegue
+│   │   ├── bigquery_dataset/        # Gestión de datasets por capas
+│   │   ├── bigquery_routine/        # Procedimientos almacenados SQL
+│   │   ├── bigquery_table/          # Creación de tablas e inyección de esquemas JSON
+│   │   ├── bigquery_view/           # Creación de vistas analíticas
+│   │   ├── dataform/                # Repositorio y Workflows de Dataform
+│   │   └── secret_manager/          # Configuración de Secret Manager y permisos IAM
+│   ├── resources/
+│   │   └── bigquery/                # Scripts SQL, schemas JSON y vistas de negocio
+│   ├── main.tf                      # Orquestador principal de módulos
+│   ├── provider.tf                  # Configuración del proveedor GCP
+│   ├── variables.tf                 # Variables globales del sistema
+│   └── outputs.tf                   # Salidas y outputs de recursos desplegados
 ├── LICENSE.md
 └── README.md
-
 ```
 
-## 🔑 Configuración de Secretos en GitHub
+---
 
-Para autorizar a GitHub Actions a interactuar con GCP de forma segura, debes configurar los siguientes parámetros en tu repositorio (**Settings -> Secrets and variables -> Actions**):
+## 🔑 Configuración de IAM, Service Account y Llaves JSON
 
-### Service Account Key (Secret)
+Para permitir el despliegue automatizado de la infraestructura y pipelines desde GitHub Actions o localmente, se requiere una Service Account (SA) dedicada con los permisos mínimos necesarios.
 
-* **Nombre:** `KEYGCP`
+### 1. Creación de la Service Account de Despliegue
 
-* **Valor:** El contenido de tu archivo JSON de credenciales de GCP codificado en Base64.
+En la consola de GCP o mediante `gcloud`:
 
-* **Comando para codificar:**
-
-  * **Linux / WSL:** `base64 -w 0 key.json`
-
-  * **macOS:** `base64 -i key.json | tr -d '\n'`
-
-  * **PowerShell:** `[Convert]::ToBase64String([IO.File]::ReadAllBytes("key.json"))`
-
-### Variables de Repositorio (Variables)
-
-*(Opcional si usas el método por defecto con GitHub Variables)*
-
-`GCP_PROJECT`, `GCP_REGION`, `BUCKET_NAME`, `ENVIRONMENT`, `PROVIDER`.
-
-## 🛠️ Requisitos e Instalación Local (Para Pruebas y Desarrollo)
-
-Antes de hacer un push a GitHub, se recomienda configurar tu entorno local (en Ubuntu / WSL / Linux) instalando las herramientas necesarias:
-
-### 1. Instalar Google Cloud CLI (`gcloud`)
-
-```
-# Agregar la distribución de gcloud y sus llaves oficiales
-sudo apt-get update && sudo apt-get install -y apt-transport-https ca-certificates gnupg curl
-curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
-echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
-sudo apt-get update && sudo apt-get install -y google-cloud-cli
-
+```bash
+gcloud iam service-accounts create sa-deployer-cicd \
+    --description="Cuenta de servicio para despliegue de infraestructura y Dataform mediante CI/CD" \
+    --display-name="SA Deployer CI/CD"
 ```
 
-### 2. Instalar Terraform
+### 2. Asignación de Roles y Permisos (Detalle Técnico)
 
-```
-# Descargar e instalar la herramienta de HashiCorp Terraform
-sudo apt-get update && sudo apt-get install -y gnupg software-properties-common
-wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null
-echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-sudo apt update && sudo apt install -y terraform
+A continuación se detalla el propósito de cada rol asignado a la Service Account de despliegue (`sa-deployer-cicd`):
 
-```
+| Rol GCP | Identificador del Rol | Propósito y Justificación Técnica |
+| :--- | :--- | :--- |
+| **BigQuery Data Editor** | `roles/bigquery.dataEditor` | Permite crear, actualizar y eliminar datasets, tablas, vistas y rutinas SQL dentro de BigQuery en las capas Bronze, Silver y Gold. |
+| **BigQuery Job User** | `roles/bigquery.jobUser` | Otorga permisos para ejecutar consultas (queries), cargar datos, ejecutar procedimientos almacenados y lanzar jobs de Dataform. |
+| **Service Account User** | `roles/iam.serviceAccountUser` | Permite que el pipeline/deployer actúe e impersone las cuentas de servicio asociadas para ejecutar tareas delegadas (por ejemplo, Dataform Service Account). |
+| **Storage Admin** | `roles/storage.admin` | Permite administrar completamente los buckets de Google Cloud Storage (GCS), necesario para la creación del bucket de Backend State de Terraform. |
+| **Storage Object Admin** | `roles/storage.objectAdmin` | Control total para leer, escribir y eliminar archivos/objetos dentro de los buckets (gestión del archivo `.tfstate`). |
+| **Storage Object Creator** | `roles/storage.objectCreator` | Permite crear nuevos objetos/logs en los buckets de almacenamiento temporal de datos. |
+| **Storage Object Viewer** | `roles/storage.objectViewer` | Otorga permisos de lectura de esquemas, fuentes crudas o archivos estáticos subidos a Cloud Storage. |
 
-### 3. Instalar Node.js, npm y Dataform CLI
+### 3. Gestión y Descarga de la Llave JSON (Manage Keys)
 
-```
-# Limpiar lista obsoleta de apt si fuera necesario e instalar Node.js
-sudo rm -f /etc/apt/sources.list.d/google-cloud-sdk.list
-sudo apt update && sudo apt install -y nodejs npm
-sudo npm install -g @dataform/cli
+Para obtener el archivo de credenciales `key.json`:
 
-```
+1. Dirígete a **IAM & Admin -> Service Accounts** en la consola de GCP.
+2. Selecciona la cuenta de servicio creada (`sa-deployer-cicd`).
+3. Haz clic en la pestaña **Keys** (Llaves).
+4. Selecciona **Add Key -> Create new key**.
+5. Elige el tipo **JSON** y presiona **Create**.
+6. El archivo se descargará automáticamente a tu equipo. Renómbralo localmente como `key.json`.
 
-## ⚙️ Modelos de Ejecución: Local vs. GitHub Actions
+---
 
-### Opción A: Pruebas Locales (Llenando el archivo `env.tfvars.json`)
+## 🔐 Configuración de Secretos en GitHub y GCP Secret Manager
 
-Para hacer pruebas locales en tu máquina, primero debes rellenar manualmente el archivo de variables estático ubicado en `IAC/environment/dev/env.tfvars.json`:
+### 1. Habilitar y Configurar Secret Manager
 
-```
-{
-  "labels": {
-    "provider": "tu-proveedor-local"
-  },
-  "project": "tu-proyecto-gcp",
-  "region": "us-central1",
-  "bucket_name": "tu-bucket-local"
-}
+GCP Secret Manager almacena información sensible utilizada por Dataform y GitHub Actions (por ejemplo, tokens SSH de repositorios o credenciales de conexión).
 
-```
+Crea un secreto base para el proyecto:
 
-Luego, autentícate localmente con GCP y ejecuta los comandos:
-
-```
-# Autenticación con tu cuenta o service account local
-gcloud auth application-default login
-
-# Ejecutar Terraform local
-cd IAC
-terraform init
-terraform plan -var-file="environment/dev/env.tfvars.json"
-
-# Compilar Dataform local
-cd ../dataform
-npx @dataform/cli compile
-
+```bash
+gcloud secrets create dataform-github-token \
+    --replication-policy="automatic" \
+    --project="ci-cd-dataform-gh-actions"
 ```
 
-### Opción B: Producción / CI-CD por defecto (Usando Variables de GitHub Actions)
+Asigna el rol **Secret Manager Secret Accessor** (`roles/secretmanager.secretAccessor`) a la cuenta por defecto o Service Account requerida para que pueda leer las claves en tiempo de ejecución.
 
-Por defecto, el archivo `terraform.yml` está configurado para no requerir archivos de variables estáticos en el repositorio. En su lugar, el pipeline toma las Variables del Repositorio de GitHub y genera el archivo `env.tfvars.json` dinámicamente "al vuelo" justo antes de ejecutar el plan.
+### 2. Configuración e Identidad de Dataform
 
-Así es como debe lucir el bloque principal por defecto en tu archivo `terraform.yml`:
+Dataform requiere crear una identidad de servicio administrada en Google Cloud Platform para gestionar sus recursos y conectarse a Secret Manager:
 
+1. Ejecuta el comando en Cloud Shell para generar la identidad de servicio de Dataform:
+
+```bash
+gcloud beta services identity create \
+    --service=dataform.googleapis.com \
+    --project=ci-cd-dataform-gh-actions
 ```
-# MÉTODO POR DEFECTO EN GITHUB ACTIONS: Genera el archivo .tfvars.json al vuelo
-# usando las Variables de GitHub para evitar exponer datos sensibles en el repositorio público.
-- name: Generate Secure tfvars file
-  run: |
-    cat << EOF > environment/${{ vars.ENVIRONMENT }}/env.tfvars.json
-    {
-      "labels": {
-        "provider": "${{ vars.PROVIDER }}"
-      },
-      "project": "${{ vars.GCP_PROJECT }}",
-      "region": "${{ vars.GCP_REGION }}",
-      "bucket_name": "${{ vars.BUCKET_NAME }}"
-    }
-    EOF
+
+Salida esperada:
+```plaintext
+Service identity created: service-385182679523@gcp-sa-dataform.iam.gserviceaccount.com
+```
+
+2. **Otorgar Permisos a la Service Identity de Dataform:**
+   * Ve a la consola de GCP (**IAM & Admin -> IAM**), haz clic en **Grant Access** (Otorgar acceso) y agrega la cuenta creada (`service-385182679523@gcp-sa-dataform.iam.gserviceaccount.com`) con el siguiente rol:
+     * **Secret Manager Secret Accessor** (`roles/secretmanager.secretAccessor`)
+
+### 3. Codificación Base64 para GitHub Secrets
+
+Para autenticar el pipeline de GitHub Actions de forma segura:
+
+1. Codificar en Base64 desde la terminal (Ubuntu / WSL):
+
+```bash
+base64 -w 0 key.json
+```
+
+2. Configurar en GitHub Secrets:
+   * Ve a tu repositorio en GitHub -> **Settings -> Secrets and variables -> Actions**.
+   * Crea un nuevo secreto con el nombre `KEYGCP` y pega la cadena codificada.
+
+---
+
+## ⚙️ Modos de Ejecución: Con CI/CD vs. Sin CI/CD
+
+### Opción A: Con CI/CD (GitHub Actions) - Modo por Defecto
+
+El pipeline (`.github/workflows/terraform.yml`) lee las variables configuradas en GitHub (`GCP_PROJECT`, `GCP_REGION`, `BUCKET_NAME`, `PROVIDER`, `ENVIRONMENT`) y genera dinámicamente el archivo de variables antes de la ejecución de Terraform.
+
+### Opción B: Sin CI/CD (Pruebas Directas Locales)
+
+Para pruebas directas en local:
+
+1. Crea tu archivo local `IAC/environment/dev/env.tfvars.json` (asegúrate de que esté listado en `.gitignore`).
+2. Modifica temporalmente el workflow `.github/workflows/terraform.yml` para omitir la generación dinámica y usar el archivo estático:
+
+```yaml
+# - name: Generate Secure tfvars file
+#   run: |
+#     ...
 
 - name: Terraform Init & Plan
   run: |
@@ -231,48 +221,33 @@ Así es como debe lucir el bloque principal por defecto en tu archivo `terraform
     terraform plan -var-file="environment/${{ vars.ENVIRONMENT }}/env.tfvars.json" -out=tfplan
   env:
     GOOGLE_CREDENTIALS: key.json
-
 ```
 
-## 🔄 Alternativa en `terraform.yml` (Si quisieras probar el despliegue automático usando tu archivo local estático)
+---
 
-Si en algún momento prefieres que el pipeline de GitHub Actions ignore las variables de la plataforma y lea directamente tu archivo físico `env.tfvars.json` guardado en el repositorio (cuidando de no subir secretos duros), puedes reemplazar el bloque anterior por este:
+## 🛠️ Requisitos e Instalación Local (Ubuntu / WSL)
 
-```
-# ALTERNATIVA LOCAL (Para referencia / Comentado si prefieres usar el archivo estático del repo):
-- name: Terraform Init & Plan (Local tfvars)
-  run: |
-    terraform init
-    terraform plan -var-file="environment/${{ vars.ENVIRONMENT }}/env.tfvars.json" -out=tfplan
-  env:
-    GOOGLE_CREDENTIALS: key.json
+### 1. Instalar Terraform
 
+```bash
+sudo apt-get update && sudo apt-get install -y gnupg software-properties-common
+wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+sudo apt-get update && sudo apt-get install terraform=1.9.5
 ```
 
-## 🔄 Despliegue de prueba local (Guardar estado del despliegue terraform)
+### 2. Autenticación Local en GCP
 
-Si necesitas realizar pruebas en tu máquina local y no deseas usar el backend remoto en Google Cloud Storage:
-
-Elimina o comenta el siguiente bloque de código en `provider.tf`. Esto hará que Terraform guarde el estado localmente (`terraform.tfstate`):
-
-```
-backend "gcs" {
-  bucket = "dataflow-staging-us-east1-761179275057"
-  prefix = "terraform/state/dev"
-}
-
+```bash
+gcloud auth login
+gcloud auth application-default login
 ```
 
-## 🔄 Conexión con GCP Dataform Console
+### 3. Despliegue Manual Local
 
-Para programar la ejecución en producción de tus transformaciones analíticas:
-
-1. Dirígete a **BigQuery -> Dataform** en la consola de Google Cloud.
-
-2. Crea y conecta un repositorio vinculado a este repositorio de GitHub mediante un Personal Access Token (PAT).
-
-3. Configura el **Root directory** apuntando a la carpeta `dataform`.
-
-4. Crea una **Release Configuration** vinculada a la rama `main`.
-
-5. Define una **Workflow Configuration** estableciendo la periodicidad de ejecución (Cron) para correr los modelos incrementales y sus validaciones de calidad.
+```bash
+cd IAC
+terraform init
+terraform plan -var-file="environment/dev/env.tfvars.json"
+terraform apply -var-file="environment/dev/env.tfvars.json"
+```
