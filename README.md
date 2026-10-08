@@ -79,28 +79,34 @@ graph TD
 .
 ├── .github/
 │   └── workflows/
-│       └── terraform.yml            # Pipeline CI/CD de GitHub Actions
+│       ├── dataform.yml                  # Pipeline CI/CD para Dataform
+│       └── terraform.yml                 # Pipeline CI/CD de GitHub Actions para Terraform
+├── definitions/
+│   ├── bronze/
+│   │   └── bronze_clientes.sqlx          # Definición de transformación SQLX para capa Bronze
+│   └── silver/
+│       └── silver_clientes.sqlx          # Definición de transformación SQLX para capa Silver
 ├── IAC/
 │   ├── environment/
 │   │   └── dev/
-│   │       └── env.tfvars.json      # Configuración de variables locales
+│   │       └── env.tfvars.json           # Configuración de variables locales para desarrollo
 │   ├── modules/
-│   │   ├── bigquery_dataset/        # Gestión de datasets por capas
-│   │   ├── bigquery_routine/        # Procedimientos almacenados SQL
-│   │   ├── bigquery_table/          # Creación de tablas e inyección de esquemas JSON
-│   │   ├── bigquery_view/           # Creación de vistas analíticas
-│   │   ├── dataform/                # Repositorio y Workflows de Dataform
-│   │   └── secret_manager/          # Configuración de Secret Manager y permisos IAM
+│   │   ├── bigquery_dataset/             # Módulo para gestión de datasets de BigQuery
+│   │   └── bigquery_table/               # Módulo para creación de tablas e inyección de esquemas
 │   ├── resources/
-│   │   └── bigquery/                # Scripts SQL, schemas JSON y vistas de negocio
-│   ├── main.tf                      # Orquestador principal de módulos
-│   ├── provider.tf                  # Configuración del proveedor GCP
-│   ├── variables.tf                 # Variables globales del sistema
-│   └── outputs.tf                   # Salidas y outputs de recursos desplegados
-├── LICENSE.md
-└── README.md
+│   │   └── bigquery/
+│   │       └── schemas/
+│   │           └── bronze/
+│   │               └── clientes.json     # Esquema JSON para la tabla de clientes
+│   ├── .terraform.lock.hcl               # Archivo de bloqueo de versiones de proveedores Terraform
+│   ├── main.tf                           # Orquestador principal de módulos
+│   ├── provider.tf                       # Configuración del proveedor GCP
+│   └── variables.tf                      # Variables globales del sistema
+├── .gitignore                            # Archivos y carpetas ignorados por Git
+├── LICENSE                               # Licencia del proyecto
+├── README.md                             # Documentación principal del repositorio
+└── workflow_settings.yaml               # Configuración global del flujo de trabajo de Dataform
 ```
-
 ---
 
 ## 🔑 Configuración de IAM, Service Account y Llaves JSON
