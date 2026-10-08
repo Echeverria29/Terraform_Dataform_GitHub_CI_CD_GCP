@@ -10,6 +10,7 @@ Repositorio de Infraestructura como Código (IaC) enfocado en la implementación
 
 ## 📑 Tabla de Contenidos
 
+* [🛠️ Requisitos e Instalación Local (Ubuntu / WSL)](#️-requisitos-e-instalación-local-ubuntu--wsl)
 * [🏛️ Diagramas de Arquitectura](#️-diagramas-de-arquitectura)
   * [1. Arquitectura de Datos (Medallion Architecture + Dataform)](#1-arquitectura-de-datos-medallion-architecture--dataform)
   * [2. Arquitectura de Despliegue e Infraestructura](#2-arquitectura-de-despliegue-e-infraestructura)
@@ -25,8 +26,54 @@ Repositorio de Infraestructura como Código (IaC) enfocado en la implementación
 * [⚙️ Modos de Ejecución: Con CI/CD vs. Sin CI/CD](#️-modos-de-ejecución-con-cicd-vs-sin-cicd)
   * [Opción A: Con CI/CD (GitHub Actions) - Modo por Defecto](#opción-a-con-cicd-github-actions---modo-por-defecto)
   * [Opción B: Sin CI/CD (Pruebas Directas Locales)](#opción-b-sin-cicd-pruebas-directas-locales)
-* [🛠️ Requisitos e Instalación Local (Ubuntu / WSL)](#️-requisitos-e-instalación-local-ubuntu--wsl)
 
+---
+
+## 🛠️ Requisitos e Instalación Local (Ubuntu / WSL)
+
+### 1. Instalar Terraform
+
+```bash
+sudo apt-get update && sudo apt-get install -y gnupg software-properties-common
+wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+sudo apt-get update && sudo apt-get install terraform=1.9.5
+```
+### 2. Instalar Node.js (Prerrequisito para Dataform CLI)
+
+Dataform CLI requiere **Node.js** (versión 16 o superior). Si no lo tienes instalado:
+
+```bash
+curl -fsSL [https://deb.nodesource.com/setup_20.x](https://deb.nodesource.com/setup_20.x) | sudo -E bash -
+sudo apt-get install -y nodejs
+```
+
+Instala el cliente de línea de comandos de Dataform de forma global vía npm:
+
+```Bash
+sudo npm install -g @dataform/cli
+```
+Para verificar que se instaló correctamente:
+
+```Bash
+dataform --version
+```
+
+### 3. Autenticación Local en GCP
+
+```bash
+gcloud auth login
+gcloud auth application-default login
+```
+
+### 4. Despliegue Manual Local
+
+```bash
+cd IAC
+terraform init
+terraform plan -var-file="environment/dev/env.tfvars.json"
+terraform apply -var-file="environment/dev/env.tfvars.json"
+```
 ---
 
 ## 🏛️ Diagramas de Arquitectura
@@ -230,30 +277,3 @@ Para pruebas directas en local:
 ```
 
 ---
-
-## 🛠️ Requisitos e Instalación Local (Ubuntu / WSL)
-
-### 1. Instalar Terraform
-
-```bash
-sudo apt-get update && sudo apt-get install -y gnupg software-properties-common
-wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null
-echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-sudo apt-get update && sudo apt-get install terraform=1.9.5
-```
-
-### 2. Autenticación Local en GCP
-
-```bash
-gcloud auth login
-gcloud auth application-default login
-```
-
-### 3. Despliegue Manual Local
-
-```bash
-cd IAC
-terraform init
-terraform plan -var-file="environment/dev/env.tfvars.json"
-terraform apply -var-file="environment/dev/env.tfvars.json"
-```
