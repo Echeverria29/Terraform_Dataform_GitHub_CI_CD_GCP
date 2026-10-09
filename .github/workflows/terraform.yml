@@ -82,6 +82,10 @@ jobs:
               "provider": "${{ vars.PROVIDER }}"
             },
             "project": "${{ vars.GCP_PROJECT }}",
+            "project_number": "${{ vars.GCP_PROJECT_NUMBER }}",
+            "dataform_repository_id": "dataform-retail",
+            "git_remote_url": "https://github.com/${{ github.repository }}.git",
+            "github_token": "${{ secrets.PAT_GITHUB }}",
             "region": "${{ vars.GCP_REGION }}",
             "bucket_name": "${{ vars.BUCKET_NAME }}"
           }

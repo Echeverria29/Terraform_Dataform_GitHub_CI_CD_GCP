@@ -47,3 +47,26 @@ variable "tables_config" {
 }
 
 variable "default_table_expiration_days" { default = 0 }
+
+# DATAFORM
+variable "project_number" {
+  description = "Número del proyecto de GCP"
+  type        = string
+}
+
+variable "dataform_repository_id" {
+  description = "ID del repositorio de Dataform"
+  type        = string
+  default     = "dataform-retail"
+}
+
+variable "git_remote_url" {
+  description = "URL remota de GitHub"
+  type        = string
+}
+
+variable "github_token" {
+  description = "Personal Access Token de GitHub para Dataform"
+  type        = string
+  sensitive   = true
+}

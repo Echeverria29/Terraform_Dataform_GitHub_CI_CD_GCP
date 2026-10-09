@@ -19,3 +19,14 @@ module "bigquery_tables" {
   depends_on = [module.bigquery_datasets]
 }
 
+# ─── MÓDULO DATAFORM ──────────────────────────────────────────────────────────
+module "dataform_repository" {
+  source              = "./modules/dataform_repository"
+  project             = var.project
+  project_number      = var.project_number
+  region              = var.region
+  repository_id       = var.dataform_repository_id
+  git_remote_url      = var.git_remote_url
+  git_default_branch  = "main"
+  secret_github_token = var.github_token
+}
